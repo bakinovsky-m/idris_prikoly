@@ -3,13 +3,25 @@ interface (Functor f) => VerifiedFunctor (f : Type -> Type) where
  mapComposition : (f1 : a -> a) -> (f2 : a -> a) -> (x : f a) ->
   map (f1 . f2) x = (map f1 . map f2) x
 
+data MyMaybe a = Noth | Ju a
+
 infixr 10 :::
-data MML a = MMLNil | (:::) (Maybe a) (MML a)
+data MML a = MMLNil | (:::) (MyMaybe a) (MML a)
+
+Functor MyMaybe where
+ map _ Noth = Noth
+ map f (Ju v) = Ju $ f v
 
 Functor MML where
  map _ MMLNil = MMLNil
- map f (Nothing ::: xs) = Nothing ::: (map f xs)
- map f ((Just value) ::: xs) = (Just (f value)) ::: (map f xs)
+ map f (Noth ::: xs) = Noth ::: (map f xs)
+ map f ((Ju value) ::: xs) = (Ju (f value)) ::: (map f xs)
+
+VerifiedFunctor MyMaybe where
+ mapIdentity _ _ Noth = Refl
+ mapIdentity _ p (Ju a) = rewrite p a in Refl
+ mapComposition _ _ Noth = Refl
+ mapComposition f1 f2 (Ju a) = Refl
 
 VerifiedFunctor MML where
   mapIdentity _ _ MMLNil = Refl
@@ -18,16 +30,16 @@ VerifiedFunctor MML where
    zxc = mapIdentity _id _idprf xs
    in
    case maybe of
-     Nothing => rewrite zxc in Refl
-     Just value => rewrite zxc in rewrite _idprf value in Refl
+     Noth => rewrite zxc in Refl
+     Ju value => rewrite zxc in rewrite _idprf value in Refl
   mapComposition _ _ MMLNil = Refl
   mapComposition f1 f2 (maybe ::: xs) =
     let
     p1 = mapComposition f1 f2 xs
     in
     case maybe of
-    Nothing => rewrite p1 in Refl
-    Just value => rewrite p1 in Refl
+    Noth => rewrite p1 in Refl
+    Ju value => rewrite p1 in Refl
 
 qwe :
 Num a =>
