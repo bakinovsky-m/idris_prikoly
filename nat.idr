@@ -1,7 +1,6 @@
 %default total
 %hide Nat
 
-
 data MNat = Z | S MNat
 
 Uninhabited (Z = S a) where
@@ -22,23 +21,29 @@ plusRightSucc : (a,b:MNat) -> (a .+. (S b) = S (a .+. b))
 plusRightSucc Z b = Refl
 plusRightSucc (S a) b = cong $ plusRightSucc a b
 
-plusLeftZero : (a:MNat) -> (Z .+. a = a)
-plusLeftZero _ = Refl
+plusLeftZero : (Z .+. a = a)
+plusLeftZero = Refl
 
-plusLeftSucc : (a,b:MNat) -> ((S a) .+. b = S (a .+. b))
-plusLeftSucc _ _ = Refl
+plusLeftSucc : ((S a) .+. b = S (a .+. b))
+plusLeftSucc = Refl
 
 plusCommute : (a,b:MNat) -> (a .+. b = b .+. a)
 plusCommute Z b = plusRightZero b
-plusCommute (S a) b = 
- let
- pp = sym $ plusRightSucc b a
- in
- rewrite plusCommute a b in pp
+plusCommute (S a) b = rewrite plusCommute a b in sym $ plusRightSucc b a
 
-plusAssoc : (a,b,c:MNat) -> (a .+. b) .+. c = a .+. (b .+. c)
-plusAssoc Z b c = Refl
-plusAssoc (S a) b c = cong $ plusAssoc a b c
+plusAssocToLeft : (a,b,c:MNat) -> (a .+. b) .+. c = a .+. (b .+. c)
+plusAssocToLeft Z b c = Refl
+plusAssocToLeft (S a) b c = cong $ plusAssocToLeft a b c
+
+plusAssocToLeft' : (a:MNat) -> (a .+. b) .+. c = a .+. (b .+. c)
+plusAssocToLeft' Z = Refl
+plusAssocToLeft' (S a) = cong $ plusAssocToLeft' a
+
+plusAssocToRight : (a,b,c:MNat) -> a .+. (b .+. c) = (a .+. b) .+. c
+plusAssocToRight a b c = sym $ plusAssocToLeft a b c
+
+plusAssocToRight' : (a:MNat) -> a .+. (b .+. c) = (a .+. b) .+. c
+plusAssocToRight' a = sym $ plusAssocToLeft' a
 
 infixl 9 .*.
 (.*.) : MNat -> MNat -> MNat
@@ -57,40 +62,68 @@ timesRightZero : (a:MNat) -> a .*. Z = Z
 timesRightZero Z = Refl
 timesRightZero (S a) = timesRightZero a
 
-
 plusOneCommutes : (a,b:MNat) -> a .+. S b = S a .+. b
 plusOneCommutes Z _ = Refl
-plusOneCommutes (S a) b = case plusOneCommutes a b of
-  prf => rewrite prf in Refl
-
+plusOneCommutes (S a) b = rewrite plusOneCommutes a b in Refl
 
 timesPlusSRight : (a,b:MNat) -> a .+. a .*. b = a .*. S b
 timesPlusSRight Z b = Refl
 timesPlusSRight (S a) b =
-  rewrite sym $ plusAssoc a b (a .*. b) in
+  rewrite sym $ plusAssocToLeft a b (a .*. b) in
   rewrite sym $ timesPlusSRight a b in
   rewrite plusCommute a b in
-  rewrite plusAssoc b a (a .*. b) in
+  rewrite plusAssocToLeft b a (a .*. b) in
   Refl
 
 timesCommute : (a,b:MNat) -> a .*. b = b .*. a
 timesCommute Z b = rewrite timesRightZero b in Refl
 timesCommute (S a) b = rewrite timesCommute a b in timesPlusSRight b a
 
+succInj : (prf : S n = S m) -> n = m
+succInj Refl = Refl
 
-lemma02 : (a,b:MNat) -> (a = b) -> S a = S b
-lemma02 Z b prf = cong prf
-lemma02 (S x) b prf = rewrite prf in Refl
+lemma1 : (a,b,c:MNat) -> (a .+. b = a .+. c) -> b = c
+lemma1 Z _ _ prf = prf
+lemma1 (S x) b c prf =
+ let
+ step1 = plusLeftSucc
+ step2 = replace prf step1
+ step3 = plusLeftSucc
+ step4 = replace (sym step2) step3
+ step5 = sym $ succInj step4
+ in
+ lemma1 x b c step5
+lemma1' : (a:MNat) -> (a .+. b = a .+. c) -> b = c
+lemma1' Z prf = prf
+lemma1' (S x) prf =
+ let
+ step1 = plusLeftSucc
+ step2 = replace prf step1
+ step3 = plusLeftSucc
+ step4 = replace (sym step2) step3
+ step5 = sym $ succInj step4
+ in
+ lemma1' x step5
 
-sucInj : (prf : S n = S m) -> n = m
-sucInj Refl = Refl
+%hide (+)
+(+) : MNat -> MNat -> MNat
+(+) = (.+.)
+%hide (*)
+(*) : MNat -> MNat -> MNat
+(*) = (.*.)
 
---https://github.com/0xd34df00d/fizzbuzz-i/blob/master/Fizzbuzz.idr#L113
-lemma1 : (a,b:MNat) -> (a .+. b = a .+. c) -> b = c
-lemma1 Z b prf = prf
-lemma1 (S x) b prf = ?asd
 
+---https://github.com/0xd34df00d/fizzbuzz-i/blob/master/Fizzbuzz.idr#L113
+shuffleLemma : (n,m,kn,km:MNat) -> (n + m) + (kn + km) = (n+kn)+(m+km)
+shuffleLemma n m kn km = ?shuffle_lemma_hole
+ -- ((n+m) + (kn+km)) = {plusAssocToLeft}
 
--- plusTimesDistr : (a,b,c:MNat) -> a .*. (b .+. c) = (a .*. b) .+. (a .*. c)
--- plusTimesDistr Z b c = Refl
--- plusTimesDistr (S a) b c = ?distr
+plusTimesDistr : (a,b,c:MNat) -> a * (b + c) = a * b + a * c
+plusTimesDistr Z b c = Refl
+plusTimesDistr (S a) b c =
+ let
+ step3 = lemma1' {b=c+a*(b+c)} {c=(a*b + (c+a*c))} b
+ in
+ ?hole
+ -- step3 ?hole
+ -- rewrite lemma1 b (c+a*(b+c)) (a*b+(c+a*c)) in ?hole
