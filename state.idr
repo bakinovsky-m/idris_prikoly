@@ -5,8 +5,11 @@ record MState s a where
  runState : s -> (a,s)
  
 Functor (MState s) where
- --map : (a -> b) -> State s a -> State s b
- map f (MkMState a) = MkMState $ \s0 => (f $ fst $ a s0, s0)
+ map f (MkMState r) = MkMState $ \s0 =>
+  let
+  (a_orig, s_orig) = r s0
+  in
+  (f a_orig, s_orig)
 
 interface Functor f => VerifiedFunctor (f : Type -> Type) where
   functorIdentity : (g : a -> a) -> (prf : (v : a) -> g v = v) -> (x : f a) -> map g x = x
